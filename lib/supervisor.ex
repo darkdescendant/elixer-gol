@@ -7,7 +7,7 @@ defmodule GOL.Supervisor do
 
 	def init(:ok) do
 		children = [
-			worker(GOL.CellRegistry, [GOL.CellRegistry]),
+			worker(GOL.CellRegistry, [GOL.CellRegistry.name]),
 			supervisor(GOL.Cell.Supervisor, [])
 		]
 
