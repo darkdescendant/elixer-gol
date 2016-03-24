@@ -21,5 +21,25 @@ defmodule GOL.CellTest do
 		assert GOL.Cell.get_state(cell) == :alive
 	end
 
-	
+	test "can get count of live neighbors", %{cell: cell} do
+		neighbors = GOL.Cell.neighbors(cell)
+		Enum.each(neighbors, fn (n) ->
+			GOL.CellRegistry.create(n, {10,10})
+		end)
+
+		anc = GOL.Cell.count_living_neighbors(cell)
+		assert anc == 0
+
+		Enum.each(neighbors, fn (n) ->
+			{:ok, neighbor_cell} = GOL.CellRegistry.lookup(n)
+			assert GOL.Cell.cell_id(neighbor_cell) == n
+			GOL.Cell.set_state(neighbor_cell, :alive)
+			assert GOL.Cell.get_state(neighbor_cell) == :alive
+			:ok
+		end)
+
+		anc = GOL.Cell.count_living_neighbors(cell)
+		assert anc == 8
+	end
+		
 end
