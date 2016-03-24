@@ -25,8 +25,12 @@ defmodule GOL.Cell do
 		state
 	end
 
-	def count_living_neighbors(cell) do
-		GenServer.call(cell, {:count_living_neighbors})
+	def count_living_neighbors(cell, registry) do
+		GenServer.call(cell, {:count_living_neighbors, registry})
+	end
+
+	def next_state(cell, registry) do
+		GenServer.call(cell, {:next_state, registry})
 	end
 	
 	def init(data) do
@@ -43,8 +47,10 @@ defmodule GOL.Cell do
 				{:reply, :ok, Map.put(data, :state, state)}
 			{:neighbors} ->
 				get_neighbors(data)
-			{:count_living_neighbors} ->
-				get_living_neighbor_count(data)
+			{:count_living_neighbors, registry} ->
+				get_living_neighbor_count(data, registry)
+			{:next_state, registry} ->
+				calculate_next_state(data, registry)				
 		end
 	end
 
@@ -55,19 +61,35 @@ defmodule GOL.Cell do
 				{:ok, {cx, cy}} = Map.fetch(data, :cell_id)
 				{:ok, {bx, by}} = Map.fetch(data, :bounds)
 				n = for nx <- cx-1..cx+1, ny <- cy-1..cy+1, nx >= 0 && nx < bx, ny >= 0 && ny < by, !(nx == cx && ny == cy), do: {nx, ny}
-								{:reply, n, Map.put(data, :neighbors, n)}
+				{:reply, n, Map.put(data, :neighbors, n)}
 		end
 	end
 
-	defp get_living_neighbor_count(data) do
+	defp get_living_neighbor_count(data, registry) do
 		{_,n,_} = get_neighbors(data)
 		cell_states = Enum.map(n, fn (n) ->
-			{:ok, cell} = GOL.CellRegistry.lookup(n)
+			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
 			GOL.Cell.get_state(cell)
 		end)
 
 		count = Enum.count(Enum.filter(cell_states, fn (cs) -> cs == :alive end))
 		{:reply, count, data}
 	end
-	
+
+	defp calculate_next_state(data, registry) do
+		{_, lnc, _} = get_living_neighbor_count(data, registry)
+		{:ok, cs} = Map.fetch(data, :state)
+		next_state = :dead
+		case {lnc, cs} do
+			{2, :alive} ->
+				next_state = :alive
+			{3, :dead} ->
+				next_state = :alive
+			{3, :alive} ->
+				next_state = :alive
+			_ ->
+				next_state = :dead
+		end
+		{:reply, next_state, Map.put(data, :state, next_state)}
+	end
 end
