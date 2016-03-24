@@ -1,6 +1,9 @@
 defmodule GOL.CellRegistry do
 	use GenServer
-	
+
+	@name GOL.CellRegistry
+	def name, do: @name
+
 	def start_link(name) do
 		GenServer.start_link(__MODULE__, :ok, name: name)
 	end
@@ -9,8 +12,16 @@ defmodule GOL.CellRegistry do
 		GenServer.stop(server)
 	end
 	
+	def lookup(name) do
+		GenServer.call(@name, {:lookup, name})
+	end
+
 	def lookup(server, name) do
 		GenServer.call(server, {:lookup, name})
+	end
+
+	def create(name, bounds) do
+		GenServer.cast(@name, {:create, name, bounds})
 	end
 
 	def create(server, name, bounds) do
