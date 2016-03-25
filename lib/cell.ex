@@ -32,6 +32,10 @@ defmodule GOL.Cell do
 	def next_state(cell, registry) do
 		GenServer.call(cell, {:next_state, registry})
 	end
+
+	def swap_state(cell) do
+		GenServer.call(cell, {:swap_state})
+	end
 	
 	def init(data) do
 		{:ok, data}
@@ -50,7 +54,10 @@ defmodule GOL.Cell do
 			{:count_living_neighbors, registry} ->
 				get_living_neighbor_count(data, registry)
 			{:next_state, registry} ->
-				calculate_next_state(data, registry)				
+				calculate_next_state(data, registry)
+			{:swap_state} ->
+				{:ok, next_state} = Map.fetch(data, :next_state)
+				{:reply, :ok, Map.put(data, :state, next_state)}
 		end
 	end
 
@@ -80,6 +87,7 @@ defmodule GOL.Cell do
 		{_, lnc, _} = get_living_neighbor_count(data, registry)
 		{:ok, cs} = Map.fetch(data, :state)
 		next_state = :dead
+		IO.inspect {lnc, cs}
 		case {lnc, cs} do
 			{2, :alive} ->
 				next_state = :alive
@@ -90,6 +98,8 @@ defmodule GOL.Cell do
 			_ ->
 				next_state = :dead
 		end
-		{:reply, next_state, Map.put(data, :state, next_state)}
+		IO.inspect next_state
+		IO.puts ""
+		{:reply, next_state, Map.put(data, :next_state, next_state)}
 	end
 end

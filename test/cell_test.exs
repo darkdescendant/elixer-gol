@@ -113,7 +113,7 @@ defmodule GOL.CellTest do
 			GOL.CellRegistry.create(registry, n, {10,10})
 		end)
 
-		GOL.Cell.set_state(cell, :alive)
+		GOL.Cell.set_state(cell, :dead)
 		assert GOL.Cell.next_state(cell, registry) == :dead
 
 		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,0})
@@ -145,4 +145,30 @@ defmodule GOL.CellTest do
 		assert GOL.Cell.next_state(cell, registry) == :dead
 	end
 
+	test "should set state to next state on command", %{cell: cell, registry: registry} do
+		neighbors = GOL.Cell.neighbors(cell)
+		Enum.each(neighbors, fn (n) ->
+			GOL.CellRegistry.create(registry, n, {10,10})
+		end)
+
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,0})
+		GOL.Cell.set_state(n_cell, :alive)
+		assert GOL.Cell.get_state(cell) == :dead
+		assert GOL.Cell.next_state(cell, registry) == :dead
+
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
+		GOL.Cell.set_state(n_cell, :alive)
+		assert GOL.Cell.get_state(cell) == :dead
+		assert GOL.Cell.next_state(cell, registry) == :dead
+		
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,0})
+		GOL.Cell.set_state(n_cell, :alive)
+		assert GOL.Cell.get_state(cell) == :dead
+		assert GOL.Cell.next_state(cell, registry) == :alive
+
+		GOL.Cell.swap_state(cell)
+		assert GOL.Cell.get_state(cell) == :alive
+		assert GOL.Cell.next_state(cell, registry) == :alive
+	end
+	
 end
