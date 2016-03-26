@@ -3,7 +3,10 @@ defmodule GOL.CellTest do
 
 	setup context do
 		{:ok, registry} = GOL.CellRegistry.start_link(context.test)
-		GOL.CellRegistry.create(registry, {1,1}, {10, 10})
+		cells = for cx <- 0..2, cy <- 0..2, do: {cx,cy}
+		Enum.each(cells, fn(c) ->
+			GOL.CellRegistry.create(registry, c, {3,3})
+		end)
 		{:ok, cell} = GOL.CellRegistry.lookup(registry, {1,1})
 		{:ok, %{cell: cell, registry: registry}}
 	end
@@ -24,14 +27,9 @@ defmodule GOL.CellTest do
 	end
 
 	test "can get count of live neighbors", %{cell: cell, registry: registry} do
-		neighbors = GOL.Cell.neighbors(cell)
-		Enum.each(neighbors, fn (n) ->
-			GOL.CellRegistry.create(registry, n, {10,10})
-		end)
-
 		anc = GOL.Cell.count_living_neighbors(cell, registry)
 		assert anc == 0
-
+		neighbors = GOL.Cell.neighbors(cell)
 		Enum.each(neighbors, fn (n) ->
 			{:ok, neighbor_cell} = GOL.CellRegistry.lookup(registry, n)
 			assert GOL.Cell.cell_id(neighbor_cell) == n
@@ -44,12 +42,7 @@ defmodule GOL.CellTest do
 		assert anc == 8
 	end
 
-	test "dead cell stays dead", %{cell: cell, registry: registry} do
-		neighbors = GOL.Cell.neighbors(cell)
-		Enum.each(neighbors, fn (n) ->
-			GOL.CellRegistry.create(registry, n, {10,10})
-		end)
-
+	test "dead cell stays dead", %{registry: registry} do
 		{:ok, t_cell} = GOL.CellRegistry.lookup(registry, {0,0})
 		assert GOL.Cell.next_state(t_cell, registry) == :dead
 
@@ -63,12 +56,7 @@ defmodule GOL.CellTest do
 
 	end
 
-	test "dead cell lives", %{cell: cell, registry: registry} do
-		neighbors = GOL.Cell.neighbors(cell)
-		Enum.each(neighbors, fn (n) ->
-			GOL.CellRegistry.create(registry, n, {10,10})
-		end)
-
+	test "dead cell lives", %{registry: registry} do
 		{:ok, t_cell} = GOL.CellRegistry.lookup(registry, {0,0})
 		assert GOL.Cell.next_state(t_cell, registry) == :dead
 
@@ -87,11 +75,6 @@ defmodule GOL.CellTest do
 	end
 
 	test "alive cell stays alive", %{cell: cell, registry: registry} do
-		neighbors = GOL.Cell.neighbors(cell)
-		Enum.each(neighbors, fn (n) ->
-			GOL.CellRegistry.create(registry, n, {10,10})
-		end)
-
 		GOL.Cell.set_state(cell, :alive)
 
 		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,0})
@@ -108,11 +91,6 @@ defmodule GOL.CellTest do
 	end
 
 	test "alive cell dies", %{cell: cell, registry: registry} do
-		neighbors = GOL.Cell.neighbors(cell)
-		Enum.each(neighbors, fn (n) ->
-			GOL.CellRegistry.create(registry, n, {10,10})
-		end)
-
 		GOL.Cell.set_state(cell, :dead)
 		assert GOL.Cell.next_state(cell, registry) == :dead
 
@@ -146,11 +124,6 @@ defmodule GOL.CellTest do
 	end
 
 	test "should set state to next state on command", %{cell: cell, registry: registry} do
-		neighbors = GOL.Cell.neighbors(cell)
-		Enum.each(neighbors, fn (n) ->
-			GOL.CellRegistry.create(registry, n, {10,10})
-		end)
-
 		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,0})
 		GOL.Cell.set_state(n_cell, :alive)
 		assert GOL.Cell.get_state(cell) == :dead
@@ -169,6 +142,11 @@ defmodule GOL.CellTest do
 		GOL.Cell.swap_state(cell)
 		assert GOL.Cell.get_state(cell) == :alive
 		assert GOL.Cell.next_state(cell, registry) == :alive
+	end
+
+	test "should receive a report notification", %{cell: cell, registry: registry} do
+		GOL.Cell.update(cell, self, registry)
+		assert_receive {:"$gen_cast", {:report_to_caller, ^cell}}, 5000
 	end
 	
 end
