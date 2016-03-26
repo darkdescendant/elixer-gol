@@ -63,7 +63,7 @@ defmodule GOL.Cell do
 		GenServer.call(cell, {:swap})
 	end
 	
-	def handle_call(request, from, state) do
+	def handle_call(request, _from, state) do
 		case request do
 			{:get_cell_id} ->
 				{:ok, cell_id} = Map.fetch(state, :cell_id)
@@ -169,7 +169,7 @@ defmodule GOL.Cell do
 
 	defp handle_update(state, from, registry) do
 		case Map.fetch(state, :callers) do
-			{:ok, callers} ->
+			{:ok, _callers} ->
 			  GOL.Cell.report_to_caller(from, self)
 			_ ->
 				state = Map.put(state, :callers, [from])
@@ -295,18 +295,16 @@ defmodule GOL.Cell do
 	end
 	
 	defp get_next_state(count, current_state) do
-		next_state = :dead
 		case {count, current_state} do
 			{2, :alive} ->
-				next_state = :alive
+				:alive
 			{3, :dead} ->
-				next_state = :alive
+				:alive
 			{3, :alive} ->
-				next_state = :alive
+				:alive
 			_ ->
-				next_state = :dead
+				:dead
 		end
-		next_state
 	end
 	
 	defp do_swap_state(data) do
