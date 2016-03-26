@@ -127,12 +127,14 @@ defmodule GOL.Cell do
 	Start swap sate machine to kickoff cell state swap.
 	"""
 	def swap(cell, from, registry) do
+		GenServer.cast(cell, {:swap, from, registry})
 	end
 
 	@doc"""
 	Tell our neighbor cells to swap first.
 	"""
 	def neighbor_swap(cell) do
+		GenServer.cast(cell, {:neighbor_swap})
 	end
 	
 	@doc"""
@@ -140,19 +142,22 @@ defmodule GOL.Cell do
 
   When all neighbor cells are done we can swap our state.
 	"""
-	def neighbor_swap_complete(cell, from) do
+	def neighbor_swap_complete(cell, from) do	
+		GenServer.cast(cell, {:neighbor_swap_complete, from})
 	end
 	
 	@doc"""
 	Start swap sate machine to kickoff cell state swap.
 	"""
-	def swap_state(cell) do
+	def cell_swap_state(cell) do
+		GenServer.cast(cell, {:cell_swap_state})
 	end
 	
 	@doc"""
 	Report the swap is complete.
 	"""
-	def report_swap_complete(cell, from, registry) do
+	def report_swap_complete(cell) do
+		GenServer.cast(cell, {:report_swap_complete})
 	end
 
 

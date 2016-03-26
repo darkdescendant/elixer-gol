@@ -40,6 +40,16 @@ defmodule GOL.CellServer do
 				handle_update_complete(state)
 			{:report_to_caller, from} ->
 				handle_report_to_caller(state, from)
+			{:swap, from, registry} ->
+				handle_swap(state, from, registry)
+			{:neighbor_swap} ->
+				handle_neighbor_swap(state)
+			{:neighbor_swap_complete, from} ->
+				handle_neighbor_swap_complete(state, from)
+			{:cell_swap_state} ->
+				handle_cell_swap_state(state)
+			{:report_swap_complete} ->
+				handle_report_swap_complete(state)
  		end
 	end
 
@@ -151,4 +161,25 @@ defmodule GOL.CellServer do
 		{:reply, :ok, new_data}
 	end
 
+	def handle_swap(state, _from, _registry) do
+		{:noreply, state}
+	end
+
+	def handle_neighbor_swap(state) do
+		{:noreply, state}
+	end
+
+	def handle_neighbor_swap_complete(state, _from) do
+		{:noreply, state}
+	end
+
+	def handle_cell_swap_state(state) do
+		{:noreply, state}
+	end
+
+	def handle_report_swap_complete(state) do
+		{:noreply, state}
+	end
+	
+		
 end
