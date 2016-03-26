@@ -1,11 +1,15 @@
 defmodule GOL.CellTest do
   use ExUnit.Case, async: true
 
+	@board_width 20
+	@board_height 20
+	@board_dim {@board_width, @board_height}
+	
 	setup context do
 		{:ok, registry} = GOL.CellRegistry.start_link(context.test)
-		cells = for cx <- 0..2, cy <- 0..2, do: {cx,cy}
+		cells = for cx <- 0..(@board_width - 1), cy <- 0..(@board_height-1), do: {cx,cy}
 		Enum.each(cells, fn(c) ->
-			GOL.CellRegistry.create(registry, c, {3,3})
+			GOL.CellRegistry.create(registry, c, @board_dim)
 		end)
 		{:ok, cell} = GOL.CellRegistry.lookup(registry, {1,1})
 		{:ok, %{cell: cell, registry: registry}}
@@ -150,7 +154,7 @@ defmodule GOL.CellTest do
 	end
 	
 	test "should change bar to hbar", %{cell: cell, registry: registry} do
-		board = for cx <- 0..2, cy <- 0..2, do: {cx,cy}
+		board = for cx <- 0..(@board_width-1), cy <- 0..(@board_height-1), do: {cx,cy}
 		
 		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
 		GOL.Cell.set_state(n_cell, :alive)
