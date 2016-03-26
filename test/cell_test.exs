@@ -149,4 +149,51 @@ defmodule GOL.CellTest do
 		assert_receive {:"$gen_cast", {:report_to_caller, ^cell}}, 5000
 	end
 	
+	test "should change bar to hbar", %{cell: cell, registry: registry} do
+		board = for cx <- 0..2, cy <- 0..2, do: {cx,cy}
+		
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
+		GOL.Cell.set_state(n_cell, :alive)
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,1})
+		GOL.Cell.set_state(n_cell, :alive)
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {2,1})
+		GOL.Cell.set_state(n_cell, :alive)
+
+		GOL.Cell.update(cell, self, registry)
+		assert_receive {:"$gen_cast", {:report_to_caller, ^cell}}, 5000
+
+		Enum.each(board, fn (n) ->
+			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
+			state = GOL.Cell.swap_state(cell)
+		end)
+
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
+		assert GOL.Cell.get_state(n_cell) == :dead
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,1})
+		assert GOL.Cell.get_state(n_cell) == :alive
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {2,1})
+		assert GOL.Cell.get_state(n_cell) == :dead
+
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,0})
+		assert GOL.Cell.get_state(n_cell) == :alive
+		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,2})
+		assert GOL.Cell.get_state(n_cell) == :alive
+
+	end
+
+	defp print_board(board, registry) do
+		IO.puts "\n---------"
+		
+		Enum.each(board, fn (n) ->
+			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
+			state = GOL.Cell.get_state(cell)
+			case state do
+				:alive -> IO.write "X"
+				:dead -> IO.write "."
+			end
+		end)
+
+		IO.puts "\n---------"
+	end
+	
 end
