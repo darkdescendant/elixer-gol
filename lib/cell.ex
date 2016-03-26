@@ -74,11 +74,13 @@ defmodule GOL.Cell do
 				state = Map.put(state, :state, new_state)
 				{:reply, :ok, state}
 			{:neighbors} ->
-				get_neighbors(state)
+				{:reply, GOL.ConwayRules.get_neighbors(state), state}
 			{:count_living_neighbors, registry} ->
-				get_living_neighbor_count(state, registry)				
+				{:reply, GOL.ConwayRules.get_living_neighbor_count(state, registry), state}
 			{:get_next_state, registry} ->
-				calculate_next_state(state, registry)
+				next_cell_state = GOL.ConwayRules.calculate_next_state(state, registry)
+			  state = Map.put(state, :next_state, next_cell_state)
+			  {:reply, next_cell_state, state}
 			{:swap} ->
 				do_swap_state(state)
 		end
@@ -182,7 +184,7 @@ defmodule GOL.Cell do
 
 	defp handle_update_neighbors(state) do
 		{:ok, registry} = Map.fetch(state, :registry)
-		{_,n,_} = get_neighbors(state)
+		n = GOL.ConwayRules.get_neighbors(state)
 		update_cells = Enum.map(n, fn (c) ->
 			{:ok, target} = GOL.CellRegistry.lookup(registry, c)
 			target
@@ -215,7 +217,7 @@ defmodule GOL.Cell do
 			if (Enum.count(update_cells) == 0) do
 				{:ok, registry} = Map.fetch(state, :registry)
 				state = Map.delete(state, :update_cells)
-				{_,n,_} = get_neighbors(state)
+				n = GOL.ConwayRules.get_neighbors(state)
 				state_cells = Enum.map(n, fn (c) ->
 					{:ok, target} = GOL.CellRegistry.lookup(registry, c)
 					target
@@ -256,56 +258,13 @@ defmodule GOL.Cell do
 		{:ok, current_state} = Map.fetch(state, :state)
 		{:ok, neighbor_states} = Map.fetch(state, :neighbor_states)
 	 	alive_count = Enum.count(Enum.filter(neighbor_states, fn (cs) -> cs == :alive end))
-	 	next_state = get_next_state(alive_count, current_state)
+	 	next_state = GOL.ConwayRules.get_next_state(alive_count, current_state)
 	 	state = Map.put(state, :next_state, next_state)
 		state = Map.delete(state, :neighbor_states)
 		GOL.Cell.update_complete(self)
 		{:noreply, state}
 	end
 
-	# TODO: All this code should be replaced by a rules engine so that we
-	# can plug in new rule sets without changing the cell implementation.
-	defp get_neighbors(data) do
-		case Map.get(data, :neighbors) do
-			{:ok, n} -> n
-			_ ->
-				{:ok, {cx, cy}} = Map.fetch(data, :cell_id)
-				{:ok, {bx, by}} = Map.fetch(data, :bounds)
-				n = for nx <- cx-1..cx+1, ny <- cy-1..cy+1, nx >= 0 && nx < bx, ny >= 0 && ny < by, !(nx == cx && ny == cy), do: {nx, ny}
-								{:reply, n, Map.put(data, :neighbors, n)}
-		end
-	end
-	
-	defp get_living_neighbor_count(data, registry) do
-		{_,n,_} = get_neighbors(data)
-		cell_states = Enum.map(n, fn (n) ->
-			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
-			GOL.Cell.get_state(cell)
-		end)
-		
-		count = Enum.count(Enum.filter(cell_states, fn (cs) -> cs == :alive end))
-		{:reply, count, data}
-	end
-	
-	defp calculate_next_state(data, registry) do
-		{_, lnc, _} = get_living_neighbor_count(data, registry)
-		{:ok, cs} = Map.fetch(data, :state)
-		next_state = get_next_state(lnc, cs)
-		{:reply, next_state, Map.put(data, :next_state, next_state)}
-	end
-	
-	defp get_next_state(count, current_state) do
-		case {count, current_state} do
-			{2, :alive} ->
-				:alive
-			{3, :dead} ->
-				:alive
-			{3, :alive} ->
-				:alive
-			_ ->
-				:dead
-		end
-	end
 	
 	defp do_swap_state(data) do
 		{:ok, next_state} = Map.fetch(data, :next_state)
