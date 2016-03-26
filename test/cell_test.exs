@@ -168,7 +168,7 @@ defmodule GOL.CellTest do
 
 		Enum.each(board, fn (n) ->
 			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
-			state = GOL.Cell.swap_state(cell)
+			GOL.Cell.swap_state(cell)
 		end)
 
 		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
