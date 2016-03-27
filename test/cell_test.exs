@@ -8,8 +8,9 @@ defmodule GOL.CellTest do
 	setup context do
 		{:ok, registry} = GOL.CellRegistry.start_link(context.test)
 		cells = for cx <- 0..(@board_width - 1), cy <- 0..(@board_height-1), do: {cx,cy}
+		rules = GOL.ConwayRules.create
 		Enum.each(cells, fn(c) ->
-			GOL.CellRegistry.create(registry, c, @board_dim)
+			GOL.CellRegistry.create(registry, c, @board_dim, rules)
 		end)
 		{:ok, cell} = GOL.CellRegistry.lookup(registry, {1,1})
 		{:ok, %{cell: cell, registry: registry}}

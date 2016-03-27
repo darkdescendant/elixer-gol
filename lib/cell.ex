@@ -4,8 +4,12 @@ defmodule GOL.Cell do
 	@doc"""
 	Create a new cell GenServer instance.
 	"""
-	def start_link(cell_id, bounds) do
-		GenServer.start_link(GOL.CellServer, %{cell_id: cell_id, bounds: bounds, state: :dead})
+	def start_link(cell_id, bounds, rules) do
+		GenServer.start_link(GOL.CellServer,
+												 %{cell_id: cell_id,
+													 bounds: bounds,
+													 rules: rules,
+													 state: :dead})
 	end
 
 	# GenServer Call APIs
