@@ -12,11 +12,14 @@ defmodule GOL.CellServer do
 				state = Map.put(state, :state, new_state)
 				{:reply, :ok, state}
 			{:neighbors} ->
-				{:reply, GOL.ConwayRules.get_neighbors(state), state}
+				{:ok, rules} = Map.fetch(state, :rules)
+				{:reply, GOL.Rules.get_neighbors(rules, state), state}
 			{:count_living_neighbors, registry} ->
-				{:reply, GOL.ConwayRules.get_living_neighbor_count(state, registry), state}
+				{:ok, rules} = Map.fetch(state, :rules)
+				{:reply, GOL.Rules.get_living_neighbor_count(rules, state, registry), state}
 			{:get_next_state, registry} ->
-				next_cell_state = GOL.ConwayRules.calculate_next_state(state, registry)
+				{:ok, rules} = Map.fetch(state, :rules)
+				next_cell_state = GOL.Rules.calculate_next_state(rules, state, registry)
 			  state = Map.put(state, :next_state, next_cell_state)
 			  {:reply, next_cell_state, state}
 			{:swap} ->
@@ -73,7 +76,8 @@ defmodule GOL.CellServer do
 
 	def handle_update_neighbors(state) do
 		{:ok, registry} = Map.fetch(state, :registry)
-		n = GOL.ConwayRules.get_neighbors(state)
+		{:ok, rules} = Map.fetch(state, :rules)
+		n = GOL.Rules.get_neighbors(rules, state)
 		update_cells = Enum.map(n, fn (c) ->
 			{:ok, target} = GOL.CellRegistry.lookup(registry, c)
 			target
@@ -105,8 +109,9 @@ defmodule GOL.CellServer do
 			state = Map.put(state, :update_cells, update_cells)
 			if (Enum.count(update_cells) == 0) do
 				{:ok, registry} = Map.fetch(state, :registry)
+				{:ok, rules} = Map.fetch(state, :rules)
 				state = Map.delete(state, :update_cells)
-				n = GOL.ConwayRules.get_neighbors(state)
+				n = GOL.Rules.get_neighbors(rules, state)
 				state_cells = Enum.map(n, fn (c) ->
 					{:ok, target} = GOL.CellRegistry.lookup(registry, c)
 					target
@@ -146,10 +151,14 @@ defmodule GOL.CellServer do
 	def handle_calculate_next_state(state) do
 		{:ok, current_state} = Map.fetch(state, :state)
 		{:ok, neighbor_states} = Map.fetch(state, :neighbor_states)
+		{:ok, rules} = Map.fetch(state, :rules)
+
 	 	alive_count = Enum.count(Enum.filter(neighbor_states, fn (cs) -> cs == :alive end))
-	 	next_state = GOL.ConwayRules.get_next_state(alive_count, current_state)
-	 	state = Map.put(state, :next_state, next_state)
+	 	next_state = GOL.Rules.get_next_state(rules, alive_count, current_state)
+
+		state = Map.put(state, :next_state, next_state)
 		state = Map.delete(state, :neighbor_states)
+
 		GOL.Cell.update_complete(self)
 		{:noreply, state}
 	end
@@ -175,7 +184,8 @@ defmodule GOL.CellServer do
 
 	def handle_neighbor_swap(state) do
 		{:ok, registry} = Map.fetch(state, :registry)
-		ns = GOL.ConwayRules.get_neighbors(state)
+		{:ok, rules} = Map.fetch(state, :rules)
+		ns = GOL.Rules.get_neighbors(rules, state)
 		swap_cells = Enum.map(ns, fn (n) ->
 			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
 			cell

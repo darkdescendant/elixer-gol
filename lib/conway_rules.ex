@@ -1,7 +1,12 @@
 defmodule GOL.ConwayRules do
-	@behaviour GOL.Rules
+	defstruct name: "Conway Rules"
 
-	def get_neighbors(data) do
+	def create, do: %GOL.ConwayRules{}
+end
+
+defimpl GOL.Rules, for: GOL.ConwayRules do
+	
+	def get_neighbors(_rules, data) do
 		case Map.get(data, :neighbors) do
 			{:ok, n} -> n
 			_ ->
@@ -11,8 +16,8 @@ defmodule GOL.ConwayRules do
 		end
 	end
 	
-	def get_living_neighbor_count(data, registry) do
-		n = get_neighbors(data)
+	def get_living_neighbor_count(rules, data, registry) do
+		n = get_neighbors(rules, data)
 		cell_states = Enum.map(n, fn (n) ->
 			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
 			GOL.Cell.get_state(cell)
@@ -21,13 +26,13 @@ defmodule GOL.ConwayRules do
 		Enum.count(Enum.filter(cell_states, fn (cs) -> cs == :alive end))
 	end
 	
-	def calculate_next_state(data, registry) do
-		lnc = get_living_neighbor_count(data, registry)
+	def calculate_next_state(rules, data, registry) do
+		lnc = get_living_neighbor_count(rules, data, registry)
 		{:ok, cs} = Map.fetch(data, :state)
-		get_next_state(lnc, cs)
+		get_next_state(rules, lnc, cs)
 	end
 	
-	def get_next_state(count, current_state) do
+	def get_next_state(_rules, count, current_state) do
 		case {count, current_state} do
 			{2, :alive} ->
 				:alive

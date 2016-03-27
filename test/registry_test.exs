@@ -9,13 +9,13 @@ defmodule GOL.CellRegistryTest do
 	test "Can register a cell", %{registry: registry} do
 		assert GOL.CellRegistry.lookup(registry, {1,1}) == :error
 
-		GOL.CellRegistry.create(registry, {1,1},{10,10})
+		GOL.CellRegistry.create(registry, {1,1},{10,10}, GOL.ConwayRules.create)
 		assert {:ok, cell} = GOL.CellRegistry.lookup(registry, {1,1})
 		assert GOL.Cell.cell_id(cell) == {1,1}
 	end
 
 	test "removes cell on exit", %{registry: registry} do
-		GOL.CellRegistry.create(registry, {1,1},{10,10})
+		GOL.CellRegistry.create(registry, {1,1},{10,10}, GOL.ConwayRules.create)
 		assert {:ok, cell} = GOL.CellRegistry.lookup(registry, {1,1})
 		Agent.stop(cell)
 		assert GOL.CellRegistry.lookup(registry, {1,1}) == :error
@@ -23,7 +23,7 @@ defmodule GOL.CellRegistryTest do
 	end
 
 	test "removes cell on crash", %{registry: registry} do
-		GOL.CellRegistry.create(registry, {1,1}, {10,10})
+		GOL.CellRegistry.create(registry, {1,1}, {10,10}, GOL.ConwayRules.create)
 		{:ok, cell} = GOL.CellRegistry.lookup(registry, {1,1})
 		Process.exit(cell, :shutdown)
 

@@ -7,8 +7,8 @@ defmodule GOL.Cell.Supervisor do
 		Supervisor.start_link(__MODULE__, :ok, name: @name)
 	end
 
-	def start_cell(name, bounds) do
-		Supervisor.start_child(@name, [name, bounds])
+	def start_cell(name, bounds, rules) do
+		Supervisor.start_child(@name, [name, bounds, rules])
 	end
 
 	def init(:ok) do

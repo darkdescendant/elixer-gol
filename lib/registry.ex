@@ -20,12 +20,12 @@ defmodule GOL.CellRegistry do
 		GenServer.call(server, {:lookup, name})
 	end
 
-	def create(name, bounds) do
-		GenServer.cast(@name, {:create, name, bounds})
+	def create(name, bounds, rules) do
+		GenServer.cast(@name, {:create, name, bounds, rules})
 	end
 
-	def create(server, name, bounds) do
-		GenServer.cast(server, {:create, name, bounds})
+	def create(server, name, bounds, rules) do
+		GenServer.cast(server, {:create, name, bounds, rules})
 	end
 
 	def init(:ok) do
@@ -38,11 +38,11 @@ defmodule GOL.CellRegistry do
 		{:reply, Map.fetch(names, name), state}
 	end
 
-	def handle_cast({:create, name, bounds}, {names, refs} = state) do
+	def handle_cast({:create, name, bounds, rules}, {names, refs} = state) do
 		if Map.has_key?(names, name) do
 			{:noreply, state}
 		else
-			{:ok, pid} = GOL.Cell.Supervisor.start_cell(name, bounds)
+			{:ok, pid} = GOL.Cell.Supervisor.start_cell(name, bounds, rules)
 			ref = Process.monitor(pid)
 			refs = Map.put(refs, ref, name)
 			names = Map.put(names, name, pid)
