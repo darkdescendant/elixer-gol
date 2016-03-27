@@ -1,6 +1,9 @@
 defmodule GOL.ConwayRules do
 	@behaviour GOL.Rules
 
+	## TODO: How to make this an actual abstraction so that
+	## instances can be created and passed to the cells.
+	
 	def get_neighbors(data) do
 		case Map.get(data, :neighbors) do
 			{:ok, n} -> n
