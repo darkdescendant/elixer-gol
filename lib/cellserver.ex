@@ -46,10 +46,10 @@ defmodule GOL.CellServer do
 				handle_neighbor_swap(state)
 			{:neighbor_swap_complete, from} ->
 				handle_neighbor_swap_complete(state, from)
-			{:cell_swap_state} ->
-				handle_cell_swap_state(state)
 			{:report_swap_complete} ->
 				handle_report_swap_complete(state)
+			{:cell_swap_state} ->
+				handle_cell_swap_state(state)
  		end
 	end
 
@@ -161,25 +161,59 @@ defmodule GOL.CellServer do
 		{:reply, :ok, new_data}
 	end
 
-	def handle_swap(state, _from, _registry) do
+	def handle_swap(state, from, registry) do
+		case Map.fetch(state, :caller) do
+			{:ok, _} ->
+				GOL.Cell.neighbor_swap_complete(from, self)
+			_ ->
+				state = Map.put(state, :caller, from)
+				state = Map.put(state, :registry, registry)
+				GOL.Cell.neighbor_swap(self)
+		end
 		{:noreply, state}
 	end
 
 	def handle_neighbor_swap(state) do
+		{:ok, registry} = Map.fetch(state, :registry)
+		ns = GOL.ConwayRules.get_neighbors(state)
+		swap_cells = Enum.map(ns, fn (n) ->
+			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
+			cell
+		end)
+		state = Map.put(state, :swap_cells, swap_cells) 
+		Enum.each(swap_cells, fn (cell) ->
+			GOL.Cell.swap(cell, self, registry)
+		end)
 		{:noreply, state}
 	end
 
-	def handle_neighbor_swap_complete(state, _from) do
-		{:noreply, state}
-	end
-
-	def handle_cell_swap_state(state) do
+	def handle_neighbor_swap_complete(state, from) do
+		{:ok, swap_cells} = Map.fetch(state, :swap_cells)
+		swap_cells = List.delete(swap_cells, from)
+		state = Map.put(state, :swap_cells, swap_cells)
+		if (Enum.count(swap_cells) == 0) do
+			state = Map.delete(state, :swap_cells)
+			GOL.Cell.report_swap_complete(self)
+		end
 		{:noreply, state}
 	end
 
 	def handle_report_swap_complete(state) do
+		GOL.Cell.cell_swap_state(self)
 		{:noreply, state}
 	end
 	
+	def handle_cell_swap_state(state) do
+		{:ok, caller} = Map.fetch(state, :caller)
+		{:ok, next_state} = Map.fetch(state, :next_state)
+		state = Map.put(state, :state, next_state)
+
+		state = Map.delete(state, :caller)
+		state = Map.delete(state, :registry)
+
+		GOL.Cell.neighbor_swap_complete(caller, self)
+		{:noreply, state}
+	end
+
 		
 end
