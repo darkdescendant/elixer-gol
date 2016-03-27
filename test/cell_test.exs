@@ -1,8 +1,8 @@
 defmodule GOL.CellTest do
   use ExUnit.Case, async: true
 
-	@board_width 20
-	@board_height 20
+	@board_width 3
+	@board_height 3
 	@board_dim {@board_width, @board_height}
 	
 	setup context do
@@ -164,12 +164,17 @@ defmodule GOL.CellTest do
 		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {2,1})
 		GOL.Cell.set_state(n_cell, :alive)
 
+		# board_writer = GOL.Board.ConsoleWriter.create(@board_width, @board_height)		
+		# GOL.Board.Writer.write_board(board_writer, registry)
+
 		GOL.Cell.update(cell, self, registry)
 		assert_receive {:"$gen_cast", {:report_to_caller, ^cell}}, 5000
 
 		GOL.Cell.swap(cell, self, registry)
 		assert_receive {:"$gen_cast", {:neighbor_swap_complete, ^cell}}, 5000
 
+		# GOL.Board.Writer.write_board(board_writer, registry)
+		
 		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
 		assert GOL.Cell.get_state(n_cell) == :dead
 		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,1})
@@ -184,19 +189,6 @@ defmodule GOL.CellTest do
 
 	end
 
-	# defp print_board(board, registry) do
-	# 	IO.puts "\n---------"
-		
-	# 	Enum.each(board, fn (n) ->
-	# 		{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
-	# 		state = GOL.Cell.get_state(cell)
-	# 		case state do
-	# 			:alive -> IO.write "X"
-	# 			:dead -> IO.write "."
-	# 		end
-	# 	end)
-
-	# 	IO.puts "\n---------"
-	# end
+	
 	
 end
