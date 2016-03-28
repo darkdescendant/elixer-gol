@@ -179,17 +179,8 @@ defmodule GOL.CellTest do
 
 		# GOL.Board.Writer.write_board(board_writer, registry)
 
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
-		assert GOL.Cell.get_state(n_cell) == :dead
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,1})
-		assert GOL.Cell.get_state(n_cell) == :alive
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {2,1})
-		assert GOL.Cell.get_state(n_cell) == :dead
-
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,0})
-		assert GOL.Cell.get_state(n_cell) == :alive
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,2})
-		assert GOL.Cell.get_state(n_cell) == :alive
+		check_cell_state(registry, [{0,1},{2,1}], :dead)
+		check_cell_state(registry, [{1,0},{1,1}, {1,2}], :alive)
 
 		GOL.CellRegistry.stop(registry)
 	end
@@ -204,5 +195,16 @@ defmodule GOL.CellTest do
 			GOL.Cell.set_state(cell, :alive)
 		end)
 	end
-			
+
+	defp check_cell_state(registry, cell_ids, state) do
+		cells = Enum.map(cell_ids, fn(cell_id) ->
+			{:ok, cell} = GOL.CellRegistry.lookup(registry, cell_id)
+			cell
+		end)
+
+		Enum.all?(cells, fn(cell) ->
+			state == GOL.Cell.get_state(cell)
+		end)
+	end
+	
 end
