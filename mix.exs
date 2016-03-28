@@ -5,6 +5,7 @@ defmodule GOL.Mixfile do
     [app: :gol,
      version: "0.0.1",
      elixir: "~> 1.2",
+		 consolidate_protocols: Mix.env != :test,
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      deps: deps]

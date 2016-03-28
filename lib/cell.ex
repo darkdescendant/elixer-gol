@@ -130,8 +130,8 @@ defmodule GOL.Cell do
 	@doc"""
 	Start swap sate machine to kickoff cell state swap.
 	"""
-	def swap(cell, from, registry) do
-		GenServer.cast(cell, {:swap, from, registry})
+	def swap(cell, from) do
+		GenServer.cast(cell, {:swap, from})
 	end
 
 	@doc"""

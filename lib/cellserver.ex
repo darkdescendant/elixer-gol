@@ -1,7 +1,7 @@
 defmodule GOL.CellServer do
 	use GenServer
 
-		def handle_call(request, _from, state) do
+	def handle_call(request, _from, state) do
 		case request do
 			{:get_cell_id} ->
 				{:ok, cell_id} = Map.fetch(state, :cell_id)
@@ -27,7 +27,7 @@ defmodule GOL.CellServer do
 		end
 	end
 
-			def handle_cast(request, state) do
+	def handle_cast(request, state) do
 		case request do
 			{:update, from, registry} ->
 				handle_update(state, from, registry)
@@ -43,8 +43,8 @@ defmodule GOL.CellServer do
 				handle_update_complete(state)
 			{:report_to_caller, from} ->
 				handle_report_to_caller(state, from)
-			{:swap, from, registry} ->
-				handle_swap(state, from, registry)
+			{:swap, from} ->
+				handle_swap(state, from)
 			{:neighbor_swap} ->
 				handle_neighbor_swap(state)
 			{:neighbor_swap_complete, from} ->
@@ -56,7 +56,7 @@ defmodule GOL.CellServer do
  		end
 	end
 
-				# GenServer server callbacks.
+	# GenServer server callbacks.
 	def init(data) do
 		{:ok, data}
 	end
@@ -69,23 +69,28 @@ defmodule GOL.CellServer do
 				state = Map.put(state, :callers, [from])
 				state = Map.put(state, :registry, registry)
 				state = Map.put(state, :neighbor_states, [])
+				if :error == Map.fetch(state, :neighbor_cells) do
+					{:ok, rules} = Map.fetch(state, :rules)
+					n = GOL.Rules.get_neighbors(rules, state)
+					ncs = Enum.map(n, fn (c) ->
+						{:ok, cell} = GOL.CellRegistry.lookup(registry, c)
+						cell
+					end)
+					state = Map.put(state, :neighbor_cells, ncs)
+				end
 				GOL.Cell.update_neighbors(self)
 		end
 		{:noreply, state}
 	end
 
 	def handle_update_neighbors(state) do
-		{:ok, registry} = Map.fetch(state, :registry)
-		{:ok, rules} = Map.fetch(state, :rules)
-		n = GOL.Rules.get_neighbors(rules, state)
-		update_cells = Enum.map(n, fn (c) ->
-			{:ok, target} = GOL.CellRegistry.lookup(registry, c)
-			target
-		end)
-		
-		state = Map.put(state, :update_cells, update_cells)
+		ucs = []
+		{:ok, ncs} = Map.fetch(state, :neighbor_cells)
+		ucs = Enum.into(ncs, ucs)
+		state = Map.put(state, :update_cells, ucs)
 
-		Enum.each(update_cells, fn(c) ->
+		{:ok, registry} = Map.fetch(state, :registry)
+		Enum.each(ucs, fn(c) ->
 			GOL.Cell.update(c, self, registry)
 		end)
 		
@@ -108,16 +113,11 @@ defmodule GOL.CellServer do
 			update_cells = List.delete(update_cells, from)
 			state = Map.put(state, :update_cells, update_cells)
 			if (Enum.count(update_cells) == 0) do
-				{:ok, registry} = Map.fetch(state, :registry)
-				{:ok, rules} = Map.fetch(state, :rules)
-				state = Map.delete(state, :update_cells)
-				n = GOL.Rules.get_neighbors(rules, state)
-				state_cells = Enum.map(n, fn (c) ->
-					{:ok, target} = GOL.CellRegistry.lookup(registry, c)
-					target
-				end)
-				state = Map.put(state, :state_cells, state_cells)
-				Enum.each(state_cells, fn (c) ->
+				scs = []
+				{:ok, ncs} = Map.fetch(state, :neighbor_cells)
+				scs = Enum.into(ncs, scs)
+				state = Map.put(state, :state_cells, scs)
+				Enum.each(scs, fn (c) ->
 					GOL.Cell.get_current_state(c, self)
 				end)
 			end
@@ -170,29 +170,24 @@ defmodule GOL.CellServer do
 		{:reply, :ok, new_data}
 	end
 
-	def handle_swap(state, from, registry) do
+	def handle_swap(state, from) do
 		case Map.fetch(state, :caller) do
 			{:ok, _} ->
 				GOL.Cell.neighbor_swap_complete(from, self)
 			_ ->
 				state = Map.put(state, :caller, from)
-				state = Map.put(state, :registry, registry)
 				GOL.Cell.neighbor_swap(self)
 		end
 		{:noreply, state}
 	end
 
 	def handle_neighbor_swap(state) do
-		{:ok, registry} = Map.fetch(state, :registry)
-		{:ok, rules} = Map.fetch(state, :rules)
-		ns = GOL.Rules.get_neighbors(rules, state)
-		swap_cells = Enum.map(ns, fn (n) ->
-			{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
-			cell
-		end)
-		state = Map.put(state, :swap_cells, swap_cells) 
-		Enum.each(swap_cells, fn (cell) ->
-			GOL.Cell.swap(cell, self, registry)
+		swcs = []
+		{:ok, ncs} = Map.fetch(state, :neighbor_cells)
+		swcs = Enum.into(ncs, swcs)
+		state = Map.put(state, :swap_cells, swcs)
+		Enum.each(swcs, fn (cell) ->
+			GOL.Cell.swap(cell, self)
 		end)
 		{:noreply, state}
 	end
@@ -219,11 +214,10 @@ defmodule GOL.CellServer do
 		state = Map.put(state, :state, next_state)
 
 		state = Map.delete(state, :caller)
-		state = Map.delete(state, :registry)
 
 		GOL.Cell.neighbor_swap_complete(caller, self)
 		{:noreply, state}
 	end
 
-		
+	
 end

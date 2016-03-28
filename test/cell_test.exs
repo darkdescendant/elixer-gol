@@ -1,8 +1,8 @@
 defmodule GOL.CellTest do
   use ExUnit.Case, async: true
 
-	@board_width 20
-	@board_height 20
+	@board_width 3
+	@board_height 3
 	@board_dim {@board_width, @board_height}
 	
 	setup context do
@@ -154,49 +154,57 @@ defmodule GOL.CellTest do
 		assert_receive {:"$gen_cast", {:report_to_caller, ^cell}}, 5000
 	end
 	
-	test "should change bar to hbar", %{cell: cell, registry: registry} do
-		#board = for cx <- 0..(@board_width-1), cy <- 0..(@board_height-1), do: {cx,cy}
-		
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
-		GOL.Cell.set_state(n_cell, :alive)
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,1})
-		GOL.Cell.set_state(n_cell, :alive)
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {2,1})
-		GOL.Cell.set_state(n_cell, :alive)
+	test "should change bar to hbar" do
+		board_width = board_height = 20
+		board_dim = {board_width, board_height}
+
+		{:ok, registry} = GOL.CellRegistry.start_link(:BigTestRegistry)
+		cells = for cx <- 0..(board_width - 1), cy <- 0..(board_height-1), do: {cx,cy}
+		rules = GOL.ConwayRules.create
+		Enum.each(cells, fn(c) ->
+			GOL.CellRegistry.create(registry, c, board_dim, rules)
+		end)
+		{:ok, cell} = GOL.CellRegistry.lookup(registry, {1,1})
+
+		add_pattern_to_board(registry, [{0,1}, {1,1}, {2,1}])
+
+		# board_writer = GOL.Board.ConsoleWriter.create(board_width, board_height)		
+		# GOL.Board.Writer.write_board(board_writer, registry)
 
 		GOL.Cell.update(cell, self, registry)
-		assert_receive {:"$gen_cast", {:report_to_caller, ^cell}}, 5000
+		assert_receive {:"$gen_cast", {:report_to_caller, ^cell}}, 50000
 
-		GOL.Cell.swap(cell, self, registry)
-		assert_receive {:"$gen_cast", {:neighbor_swap_complete, ^cell}}, 5000
+		GOL.Cell.swap(cell, self)
+		assert_receive {:"$gen_cast", {:neighbor_swap_complete, ^cell}}, 50000
 
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {0,1})
-		assert GOL.Cell.get_state(n_cell) == :dead
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,1})
-		assert GOL.Cell.get_state(n_cell) == :alive
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {2,1})
-		assert GOL.Cell.get_state(n_cell) == :dead
+		# GOL.Board.Writer.write_board(board_writer, registry)
 
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,0})
-		assert GOL.Cell.get_state(n_cell) == :alive
-		{:ok, n_cell} = GOL.CellRegistry.lookup(registry, {1,2})
-		assert GOL.Cell.get_state(n_cell) == :alive
+		check_cell_state(registry, [{0,1},{2,1}], :dead)
+		check_cell_state(registry, [{1,0},{1,1}, {1,2}], :alive)
 
+		GOL.CellRegistry.stop(registry)
 	end
 
-	# defp print_board(board, registry) do
-	# 	IO.puts "\n---------"
-		
-	# 	Enum.each(board, fn (n) ->
-	# 		{:ok, cell} = GOL.CellRegistry.lookup(registry, n)
-	# 		state = GOL.Cell.get_state(cell)
-	# 		case state do
-	# 			:alive -> IO.write "X"
-	# 			:dead -> IO.write "."
-	# 		end
-	# 	end)
+	defp add_pattern_to_board(registry, cell_ids) do
+		cells = Enum.map(cell_ids, fn(cell_id) ->
+			{:ok, cell} = GOL.CellRegistry.lookup(registry, cell_id)
+			cell
+		end)
 
-	# 	IO.puts "\n---------"
-	# end
+		Enum.each(cells, fn(cell) ->
+			GOL.Cell.set_state(cell, :alive)
+		end)
+	end
+
+	defp check_cell_state(registry, cell_ids, state) do
+		cells = Enum.map(cell_ids, fn(cell_id) ->
+			{:ok, cell} = GOL.CellRegistry.lookup(registry, cell_id)
+			cell
+		end)
+
+		Enum.all?(cells, fn(cell) ->
+			state == GOL.Cell.get_state(cell)
+		end)
+	end
 	
 end
